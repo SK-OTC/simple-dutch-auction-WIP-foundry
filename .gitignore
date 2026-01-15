@@ -1,5 +1,5 @@
 # Remove this when the project is finished
-github/
+.github/
 
 # Compiler files
 cache/
