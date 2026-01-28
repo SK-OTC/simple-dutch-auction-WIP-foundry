@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
+
 contract DutchAuction {
     //   An auction where the price starts high and decreases over time.
     event PurchaseItem(address indexed buyer, uint256 amountPaid, uint256 itemId);
@@ -29,7 +30,14 @@ contract DutchAuction {
         _;
     }
 
-    constructor(uint256 _itemId, uint256 _startPrice, uint256 _reservePrice, uint256 _priceDecrement, uint256 _decrementInterval, uint256 _auctionDuration) {
+    constructor(
+        uint256 _itemId,
+        uint256 _startPrice,
+        uint256 _reservePrice,
+        uint256 _priceDecrement,
+        uint256 _decrementInterval,
+        uint256 _auctionDuration
+    ) {
         seller = msg.sender;
         itemId = _itemId;
         startPrice = _startPrice;
@@ -41,24 +49,23 @@ contract DutchAuction {
         isSold = false;
     }
 
-
     function getPrice() public view onlyBeforeEnd onlyAfterStart onlyNotSold returns (int256) {
-        // Calculate current price based on time elapsed using linear decay formula: 
+        // Calculate current price based on time elapsed using linear decay formula:
         // startingPrice - (discountRate * timeElapsed)
-        require(itemId != 0, "Item does not exist"); 
+        require(itemId != 0, "Item does not exist");
 
         uint256 timeElapsed = block.timestamp - auctionStartTime;
         uint256 intervalsPassed = timeElapsed / decrementInterval;
         uint256 currentDiscount = intervalsPassed * priceDecrement;
-        
+
         if (currentDiscount >= uint256(startPrice)) {
-                return int256(reservePrice); 
+            return int256(reservePrice);
         }
         uint256 currentPrice = uint256(startPrice) - uint256(currentDiscount);
 
         if (currentPrice < uint256(reservePrice)) {
             return int256(reservePrice);
-        }        
+        }
         return int256(currentPrice);
     }
 
@@ -69,10 +76,9 @@ contract DutchAuction {
         isSold = true;
         buyer = msg.sender;
         emit PurchaseItem(buyer, msg.value, itemId);
-        
+
         (bool success,) = payable(seller).call{value: msg.value}(new bytes(0));
         require(success, "tx failed");
     }
-
 }
 
