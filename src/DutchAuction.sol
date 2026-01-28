@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
-
 contract DutchAuction {
     //   An auction where the price starts high and decreases over time.
     event PurchaseItem(address indexed buyer, uint256 amountPaid, uint256 itemId);
@@ -49,29 +48,30 @@ contract DutchAuction {
         require(itemId != 0, "Item does not exist"); 
 
         uint256 timeElapsed = block.timestamp - auctionStartTime;
-        uint256 discountRate = priceDecrement / decrementInterval;
-        int256 currentPrice = int256(startPrice) - int256(discountRate * timeElapsed);
-        if (discountRate * timeElapsed >= startPrice) {
+        uint256 intervalsPassed = timeElapsed / decrementInterval;
+        uint256 currentDiscount = intervalsPassed * priceDecrement;
+        
+        if (currentDiscount >= uint256(startPrice)) {
                 return int256(reservePrice); 
         }
-        if (currentPrice < int256(reservePrice)) {
-            currentPrice = int256(reservePrice);
+        uint256 currentPrice = uint256(startPrice) - uint256(currentDiscount);
+
+        if (currentPrice < uint256(reservePrice)) {
+            return int256(reservePrice);
         }        
-        return currentPrice;
+        return int256(currentPrice);
     }
 
     function buy() public payable onlyBeforeEnd onlyAfterStart onlyNotSold {
-        require(isSold == false, "This auction item has been sold");
         require(itemId != 0, "Item does not exist");
         int256 currentPrice = getPrice();
         require(msg.value >= uint256(currentPrice), "Insufficient funds to buy the item");
-        buyer = msg.sender;
-        // Reentrancy guard
         isSold = true;
-        (bool success,) = buyer.call{value: msg.value}(new bytes(0));
-        require(success, "tx failed");
-       
+        buyer = msg.sender;
         emit PurchaseItem(buyer, msg.value, itemId);
+        
+        (bool success,) = payable(seller).call{value: msg.value}(new bytes(0));
+        require(success, "tx failed");
     }
 
 }
